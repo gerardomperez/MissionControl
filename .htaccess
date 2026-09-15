@@ -1,0 +1,11 @@
+# Mission Control — Apache rewrite rules (WAMP local dev)
+Options -Indexes
+
+RewriteEngine On
+
+# Serve CSS and JS from the public/ subdirectory
+RewriteRule ^css/(.*)$ public/css/$1 [L]
+RewriteRule ^js/(.*)$ public/js/$1 [L]
+
+# Route API calls from public/ context to actual api/ folder
+RewriteRule ^public/api/(.*)$ api/$1 [L]

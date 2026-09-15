@@ -1,0 +1,6 @@
+db/mission_control.db
+db/*.db
+public/test.php
+api/debug*.php
+.claude/
+*.log

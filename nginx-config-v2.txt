@@ -1,0 +1,55 @@
+server {
+    listen 8091;
+    listen [::]:8091;
+    
+    server_name localhost;
+    root /home/clawd/clawd/MissionControl/public;
+    index index.php index.html;
+
+    # Enable PHP processing
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # API endpoints - route to api folder
+    location /api/ {
+        alias /home/clawd/clawd/MissionControl/api/;
+        try_files $uri $uri/ =404;
+        
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            include fastcgi_params;
+        }
+    }
+
+    # Static files
+    location /css/ {
+        alias /home/clawd/clawd/MissionControl/public/css/;
+        expires 1d;
+    }
+
+    location /js/ {
+        alias /home/clawd/clawd/MissionControl/public/js/;
+        expires 1d;
+    }
+
+    # Default location
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Deny access to .htaccess files
+    location ~ /\.ht {
+        deny all;
+    }
+
+    # Deny access to sensitive files
+    location ~ /(\.git|\.env|config\.php) {
+        deny all;
+    }
+}
