@@ -25,10 +25,17 @@ function getDB(): PDO {
             $pdo = new PDO('sqlite:' . $dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            // Try WAL mode, but fall back to DELETE if directory is not writable
-            try {
-                $pdo->exec('PRAGMA journal_mode = WAL');
-            } catch (Exception $e) {
+            // WAL mode requires creating -wal and -shm files in the DB directory.
+            // If the directory is not writable (e.g. www-data serving from clawd home),
+            // use DELETE journal mode instead — it only writes to the DB file itself.
+            if ($canWriteDir) {
+                try {
+                    $pdo->exec('PRAGMA journal_mode = WAL');
+                } catch (Exception $e) {
+                    $pdo->exec('PRAGMA journal_mode = DELETE');
+                }
+            } else {
+                // Force DELETE mode; WAL would fail silently then error on first write
                 $pdo->exec('PRAGMA journal_mode = DELETE');
             }
             $pdo->exec('PRAGMA foreign_keys = ON');
