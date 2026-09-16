@@ -6,6 +6,7 @@ const API_BASE = (window.BASE_URL || '') + '/api/tasks.php';
 
 const STATUSES = [
     { key: 'backlog',     label: 'Backlog' },
+    { key: 'on_deck',     label: 'On Deck' },
     { key: 'in_progress', label: 'In Progress' },
     { key: 'blocked',     label: 'Blocked' },
     { key: 'review',      label: 'Ready for Review' },
@@ -17,6 +18,9 @@ let showHidden = false;
 
 // All tasks from last fetch
 let allTasks = [];
+
+// Current project filter
+let currentProjectFilter = 'all';
 
 /* ---- Utilities ---- */
 
@@ -61,7 +65,13 @@ function renderBoard() {
         const countEl   = document.getElementById('count-' + key);
         if (!container) return;
 
-        const tasks = allTasks.filter(t => t.status === key);
+        // Filter by status and project
+        let tasks = allTasks.filter(t => t.status === key);
+
+        // Apply project filter
+        if (currentProjectFilter !== 'all') {
+            tasks = tasks.filter(t => String(t.project_id) === String(currentProjectFilter));
+        }
 
         // Update count — for Done, count visible (non-hidden when showHidden=false)
         const visibleCount = tasks.filter(t => key !== 'done' || showHidden || !t.hidden).length;
@@ -84,9 +94,20 @@ function renderBoard() {
     updateDoneToggle();
 }
 
+function getProjectClass(title) {
+    if (!title) return '';
+    const lower = title.toLowerCase();
+    if (lower.includes('ai hustle')) return 'project-ai-hustle';
+    if (lower.includes('law defense')) return 'project-law-defense';
+    if (lower.includes('bonavita')) return 'project-bonavita';
+    if (lower.includes('second world')) return 'project-second-world';
+    return '';
+}
+
 function buildCard(task) {
     const card = document.createElement('div');
-    card.className = 'task-card' + (task.hidden ? ' hidden-task' : '');
+    const projectClass = getProjectClass(task.title);
+    card.className = 'task-card' + (task.hidden ? ' hidden-task' : '') + (projectClass ? ' ' + projectClass : '');
     card.dataset.id = task.id;
 
     const assigneeHtml = task.assignee
@@ -121,8 +142,15 @@ function buildCard(task) {
                 </div>
             </div>
         </div>
+        <div class="task-card-id">#${task.id}${task.project_name ? ` <span class="task-card-project">${escHtml(task.project_name)}</span>` : ''}</div>
         <div class="task-card-title task-card-title--clickable" data-open-id="${task.id}">${escHtml(task.title)}</div>
         ${task.description ? `<div class="task-card-desc">${escHtml(task.description)}</div>` : ''}
+        ${(function() {
+            if (!task.predecessor_task_id) return '';
+            const pred = allTasks.find(t => t.id === task.predecessor_task_id);
+            const label = pred ? `#${pred.id} — ${escHtml(pred.title)}` : `#${task.predecessor_task_id}`;
+            return `<div class="task-card-predecessor">Predecessor: ${label}</div>`;
+        })()}
         <div class="task-card-footer">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 ${assigneeHtml}
@@ -259,8 +287,40 @@ const closeBtn    = document.getElementById('newTaskModalClose');
 const cancelBtn   = document.getElementById('newTaskCancel');
 const form        = document.getElementById('newTaskForm');
 
+function populateProjectSelect(el, selectedId) {
+    const source = document.getElementById('projectFilter');
+    if (!source || !el) return;
+    el.innerHTML = '<option value="">— No Project —</option>';
+    Array.from(source.options).forEach(opt => {
+        if (opt.value === 'all') return;
+        const o = document.createElement('option');
+        o.value       = opt.value;
+        o.textContent = opt.text;
+        if (selectedId !== undefined && String(opt.value) === String(selectedId)) o.selected = true;
+        el.appendChild(o);
+    });
+}
+
+function loadProjectOptions() {
+    populateProjectSelect(document.getElementById('taskProject'));
+}
+
+function loadPredecessorOptions(el, selectedId) {
+    if (!el) return;
+    el.innerHTML = '<option value="">— None —</option>';
+    allTasks.forEach(task => {
+        const o = document.createElement('option');
+        o.value = task.id;
+        o.textContent = `#${task.id} — ${task.title}`;
+        if (selectedId !== undefined && String(task.id) === String(selectedId)) o.selected = true;
+        el.appendChild(o);
+    });
+}
+
 function openModal() {
     form.reset();
+    loadProjectOptions();
+    loadPredecessorOptions(document.getElementById('taskPredecessor'));
     modal.classList.remove('hidden');
     document.getElementById('taskTitle').focus();
 }
@@ -285,11 +345,15 @@ document.addEventListener('keydown', (e) => {
 
 form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const projectVal     = document.getElementById('taskProject').value;
+    const predecessorVal = document.getElementById('taskPredecessor').value;
     const data = {
-        title:       document.getElementById('taskTitle').value.trim(),
-        description: document.getElementById('taskDesc').value.trim(),
-        assignee:    document.getElementById('taskAssignee').value.trim(),
-        status:      document.getElementById('taskStatus').value,
+        title:               document.getElementById('taskTitle').value.trim(),
+        description:         document.getElementById('taskDesc').value.trim(),
+        assignee:            document.getElementById('taskAssignee').value.trim(),
+        status:              document.getElementById('taskStatus').value,
+        project_id:          projectVal || null,
+        predecessor_task_id: predecessorVal ? parseInt(predecessorVal) : null,
     };
     if (!data.title) return;
 
@@ -325,6 +389,7 @@ const commentLog     = document.getElementById('commentLog');
 
 const STATUS_LABELS = {
     backlog:     'Backlog',
+    on_deck:     'On Deck',
     in_progress: 'In Progress',
     blocked:     'Blocked',
     review:      'Ready for Review',
@@ -332,6 +397,7 @@ const STATUS_LABELS = {
 };
 
 let detailTaskId = null;
+let detailTask    = null;
 
 function formatCommentTime(iso) {
     if (!iso) return '';
@@ -360,6 +426,7 @@ function renderCommentLog(comments) {
                     <div class="comment-header">
                         <span class="comment-author">${escHtml(c.author)}</span>
                         <span class="comment-time">${escHtml(formatCommentTime(c.created_at))}</span>
+                        <button class="comment-delete-btn" data-comment-id="${c.id}" title="Delete comment">&#10005;</button>
                     </div>
                     <div class="comment-body">${escHtml(c.body)}</div>
                 </div>
@@ -382,6 +449,7 @@ async function loadComments(taskId) {
 
 async function openDetailModal(task) {
     detailTaskId = task.id;
+    detailTask   = task;
 
     detailTitle.textContent = task.title;
 
@@ -394,8 +462,37 @@ async function openDetailModal(task) {
             : ''}
     `;
 
-    detailDesc.textContent = task.description || '';
-    detailNotes.value      = '';
+    if (task.status === 'backlog') {
+        const ta = document.createElement('textarea');
+        ta.className   = 'form-control task-detail-desc-edit';
+        ta.rows        = 4;
+        ta.placeholder = 'Add a description…';
+        ta.value       = task.description || '';
+        ta.addEventListener('blur', async () => {
+            const newDesc = ta.value.trim();
+            if (newDesc === (task.description || '').trim()) return;
+            task.description = newDesc;
+            await fetch(API_BASE, {
+                method:  'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ id: detailTaskId, description: newDesc }),
+            });
+        });
+        detailDesc.innerHTML = '';
+        detailDesc.appendChild(ta);
+    } else {
+        detailDesc.textContent = task.description || '';
+    }
+    detailNotes.value = '';
+
+    // Set the status dropdown to current status
+    const statusSelect = document.getElementById('taskStatusChange');
+    if (statusSelect) {
+        statusSelect.value = task.status;
+    }
+
+    // Populate and set the project dropdown
+    populateProjectSelect(document.getElementById('taskDetailProject'), task.project_id);
 
     detailModal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -408,6 +505,7 @@ function closeDetailModal() {
     detailModal.classList.add('hidden');
     document.body.style.overflow = '';
     detailTaskId = null;
+    detailTask   = null;
 }
 
 detailClose?.addEventListener('click',  closeDetailModal);
@@ -425,24 +523,132 @@ document.addEventListener('keydown', (e) => {
 
 detailSaveBtn?.addEventListener('click', async () => {
     if (detailTaskId === null) return;
-    const body = detailNotes.value.trim();
-    if (!body) return;
 
     detailSaveBtn.disabled    = true;
-    detailSaveBtn.textContent = 'Posting…';
+    detailSaveBtn.textContent = 'Saving…';
     try {
-        await fetch(COMMENTS_API, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ task_id: detailTaskId, body, author: 'G' }),
-        });
+        const saves = [];
+
+        if (detailTask?.status === 'backlog') {
+            const ta      = detailDesc.querySelector('textarea');
+            const newDesc = ta ? ta.value.trim() : '';
+            if (newDesc !== (detailTask.description || '').trim()) {
+                detailTask.description = newDesc;
+                saves.push(fetch(API_BASE, {
+                    method:  'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ id: detailTaskId, description: newDesc }),
+                }));
+            }
+        }
+
+        const commentBody = detailNotes.value.trim();
+        if (commentBody) {
+            saves.push(fetch(COMMENTS_API, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ task_id: detailTaskId, body: commentBody, author: 'G' }),
+            }));
+        }
+
+        await Promise.all(saves);
         detailNotes.value = '';
         await loadComments(detailTaskId);
     } catch (err) {
-        console.error('Failed to post comment:', err);
+        console.error('Failed to save:', err);
     } finally {
         detailSaveBtn.disabled    = false;
         detailSaveBtn.textContent = 'Post Comment';
+    }
+});
+
+/* ---- Comment Delete Handler ---- */
+commentLog?.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.comment-delete-btn');
+    if (!deleteBtn) return;
+
+    const commentId = deleteBtn.dataset.commentId;
+    if (!commentId || !detailTaskId) return;
+
+    if (!confirm('Delete this comment?')) return;
+
+    try {
+        const res = await fetch(COMMENTS_API, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: parseInt(commentId) }),
+        });
+
+        if (res.ok) {
+            await loadComments(detailTaskId);
+        } else {
+            console.error('Failed to delete comment');
+        }
+    } catch (err) {
+        console.error('Error deleting comment:', err);
+    }
+});
+
+/* ---- Task Detail Project Change Handler ---- */
+document.getElementById('taskDetailProject')?.addEventListener('change', async (e) => {
+    if (!detailTaskId) return;
+    const projectId = e.target.value || null;
+    await fetch(API_BASE, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: detailTaskId, project_id: projectId }),
+    });
+    await loadTasks();
+});
+
+/* ---- Task Status Change Handler ---- */
+const statusChangeSelect = document.getElementById('taskStatusChange');
+statusChangeSelect?.addEventListener('change', async () => {
+    if (!detailTaskId) return;
+
+    const newStatus = statusChangeSelect.value;
+
+    try {
+        const res = await fetch(API_BASE, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: detailTaskId, status: newStatus }),
+        });
+
+        if (res.ok) {
+            // Update the status badge in the modal
+            const task = await res.json();
+            detailMeta.innerHTML = `
+                <span class="task-detail-status task-detail-status--${escHtml(task.status)}">
+                    ${escHtml(STATUS_LABELS[task.status] || task.status)}
+                </span>
+                ${task.assignee
+                    ? `<span class="task-detail-assignee">${escHtml(task.assignee)}</span>`
+                    : ''}
+            `;
+            // Refresh the kanban board
+            await loadTasks();
+        } else {
+            console.error('Failed to update task status');
+            // Revert dropdown to current status
+            const currentTask = allTasks.find(t => t.id === detailTaskId);
+            if (currentTask) {
+                statusChangeSelect.value = currentTask.status;
+            }
+        }
+    } catch (err) {
+        console.error('Error updating task status:', err);
+    }
+});
+
+/* ---- Project Filter Event Listeners ---- */
+document.addEventListener('DOMContentLoaded', () => {
+    const filterSelect = document.getElementById('projectFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', () => {
+            currentProjectFilter = filterSelect.value;
+            renderBoard();
+        });
     }
 });
 

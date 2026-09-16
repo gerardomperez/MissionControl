@@ -4,7 +4,7 @@ $_scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
 define('BASE_URL', $_scriptDir === '' ? '' : $_scriptDir);
 
 $page = $_GET['page'] ?? 'orchestrator';
-$allowed = ['orchestrator', 'calendar', 'statuslog', 'team'];
+$allowed = ['orchestrator', 'calendar', 'statuslog', 'team', 'skills', 'knowledge', 'journal', 'database'];
 if (!in_array($page, $allowed)) {
     http_response_code(404);
     echo '404 — Page not found';

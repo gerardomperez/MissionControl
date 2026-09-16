@@ -35,12 +35,43 @@ function specTagsHtml(specializations) {
     </div>`;
 }
 
+function formatModel(model) {
+    if (!model) return { short: '', tier: '', tierClass: '' };
+    
+    // Extract tier from model name
+    let tier = '';
+    let tierClass = '';
+    if (model.includes('opus')) {
+        tier = 'T1';
+        tierClass = 'tier-1';
+    } else if (model.includes('sonnet')) {
+        tier = 'T2';
+        tierClass = 'tier-2';
+    } else if (model.includes('haiku')) {
+        tier = 'T3';
+        tierClass = 'tier-3';
+    }
+    
+    // Shorten model name for display
+    let short = model.replace('anthropic/', '').replace('claude-', '');
+    
+    return { short, tier, tierClass };
+}
+
 function buildCard(agent, featured = false) {
     const isHenry   = agent.name === 'Henry';
     const cardClass = ['agent-card',
         isHenry   ? 'agent-card--henry'    : '',
         featured  ? 'agent-card--featured' : '',
     ].filter(Boolean).join(' ');
+
+    const modelInfo = formatModel(agent.model);
+    const modelDisplay = agent.model 
+        ? `<span class="agent-model ${escHtml(modelInfo.tierClass)}" title="${escHtml(agent.model)}">
+             <span class="model-tier">${escHtml(modelInfo.tier)}</span>
+             ${escHtml(modelInfo.short)}
+           </span>` 
+        : '';
 
     return `
         <div class="${cardClass}" data-status="${escHtml(agent.status)}">
@@ -55,6 +86,7 @@ function buildCard(agent, featured = false) {
                 ${statusBadge(agent.status)}
             </div>
             <div class="agent-card-body">
+                ${modelDisplay}
                 ${agent.description
                     ? `<p class="agent-description">${escHtml(agent.description)}</p>`
                     : ''}

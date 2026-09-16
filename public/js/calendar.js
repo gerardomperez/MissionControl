@@ -72,12 +72,46 @@ function effectiveStatus(event) {
         return 'pending';
     }
     // Past events: if still pending in DB → overdue
-    if (event.event_status === 'pending') return 'overdue';
-    return event.event_status;  // success | failed
+    if (event.status === 'pending') return 'overdue';
+    return event.status;  // success | failed
 }
 
 function statusLabel(status) {
     return { success: 'Success', failed: 'Failed', pending: 'Pending', overdue: 'Overdue' }[status] || status;
+}
+
+/* ---- Model display helpers ---- */
+
+/** Shorten model name for display: "anthropic/claude-sonnet-4-6" → "claude-sonnet" */
+function shortModel(model) {
+    if (!model) return '';
+    // Strip provider prefix
+    const name = model.includes('/') ? model.split('/').pop() : model;
+    // Further shorten common names
+    const aliases = {
+        'claude-sonnet-4-6':    'claude-sonnet',
+        'claude-opus-4-6':      'claude-opus',
+        'claude-haiku-4-5':     'claude-haiku',
+        'gpt-4o':               'gpt-4o',
+        'gpt-4o-mini':          'gpt-4o-mini',
+        'o1':                   'o1',
+        'gemini-2.5-flash-lite':'gemini-flash',
+        'gemini-2.0-flash-exp': 'gemini-flash',
+        'gemini-1.5-pro':       'gemini-pro',
+        'kimi-k2.5':            'kimi-k2',
+    };
+    return aliases[name] || name.replace(/-\d{4}-\d{2}-\d{2}$/, '').substring(0, 14);
+}
+
+/** Pick a subtle color class for the model badge */
+function modelColorClass(model) {
+    if (!model) return 'cal-model--default';
+    const m = model.toLowerCase();
+    if (m.includes('claude'))  return 'cal-model--claude';
+    if (m.includes('gpt') || m.includes('o1') || m.includes('openai')) return 'cal-model--openai';
+    if (m.includes('gemini'))  return 'cal-model--gemini';
+    if (m.includes('kimi') || m.includes('moonshot')) return 'cal-model--kimi';
+    return 'cal-model--default';
 }
 
 /* ---- Build event chip ---- */
@@ -85,10 +119,16 @@ function statusLabel(status) {
 function buildEventChip(event) {
     const status  = effectiveStatus(event);
     const time    = fmtTime(event.scheduled_at);
+    const model   = event.model || '';
     const source  = event.source         ? `Source: ${event.source}` : '';
     const cron    = event.cron_expression ? `Cron: ${event.cron_expression}` : '';
     const desc    = event.description    || '';
 
+    const modelHtml = model
+        ? `<div class="cal-event-model ${modelColorClass(model)}">${escHtml(shortModel(model))}</div>`
+        : '';
+
+    const tooltipModel = model ? `<div class="cal-tooltip-row">Model: ${escHtml(model)}</div>` : '';
     const tooltipRows = [source, cron, desc].filter(Boolean)
         .map(t => `<div class="cal-tooltip-row">${escHtml(t)}</div>`)
         .join('');
@@ -97,10 +137,14 @@ function buildEventChip(event) {
         <div class="cal-event cal-event--${status}" title="">
             <div class="cal-event-time">${escHtml(time)}</div>
             <div class="cal-event-title">${escHtml(event.title)}</div>
-            <div class="cal-event-pill">${escHtml(statusLabel(status))}</div>
+            <div class="cal-event-footer">
+                <div class="cal-event-pill">${escHtml(statusLabel(status))}</div>
+                ${modelHtml}
+            </div>
             <div class="cal-event-tooltip">
                 <div class="cal-tooltip-title">${escHtml(event.title)}</div>
                 <div class="cal-tooltip-row">${escHtml(time)}</div>
+                ${tooltipModel}
                 ${tooltipRows}
             </div>
         </div>`;

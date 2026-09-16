@@ -308,9 +308,11 @@ Each task card displays inside its status column:
 |--------|-----------------------------|---------------------------------------------------------------------------|
 | `GET`  | List events in date range   | Query params: `?start=YYYY-MM-DD&end=YYYY-MM-DD`                         |
 | `POST` | Create new event            | JSON body: `{ title, scheduled_at, source?, cron_expression? }`           |
-| `PATCH`| Update event status         | JSON body: `{ id, event_status }` — accepts `success`, `failed`, `pending`|
+| `PATCH`| Update event status         | JSON body: `{ id, status }` — accepts `success`, `failed`, `pending`|
 
 **GET behavior:** Return all events where `scheduled_at` falls between `start` (inclusive) and `end` (inclusive). Order by `scheduled_at ASC`.
+
+**Note:** The database column is `status` (not `event_status`). Use `status` in API requests and responses.
 
 ### Page Layout — `pages/calendar.php`
 
@@ -355,7 +357,7 @@ Each event renders as a compact card inside its day cell:
 #### Past vs. Future Auto-Coloring
 
 The JavaScript should, on render, automatically assign display status:
-- Events with `scheduled_at` in the past that have `event_status = 'pending'` should render with a `--warning` (amber) tint and show "Overdue" instead of "Pending".
+- Events with `scheduled_at` in the past that have `status = 'pending'` should render with a `--warning` (amber) tint and show "Overdue" instead of "Pending".
 - Events in the future should always show "Pending" regardless of database status.
 - Only past events can display "Success" or "Failed".
 
@@ -514,7 +516,7 @@ curl -s -X POST http://localhost/api/events.php \
 ```bash
 curl -s -X PATCH http://localhost/api/events.php \
   -H "Content-Type: application/json" \
-  -d '{"id":5,"event_status":"success"}'
+  -d '{"id":5,"status":"success"}'
 ```
 
 ### Submit a Status Report

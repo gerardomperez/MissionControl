@@ -1,10 +1,26 @@
-<?php /* Orchestrator — Kanban Board */ ?>
+<?php
+/* Orchestrator — Kanban Board */
+require_once __DIR__ . '/../includes/db.php';
+$pdo      = getDB();
+$projects = $pdo->query("SELECT id, name FROM projects WHERE status = 'active' ORDER BY name ASC")->fetchAll();
+$agents   = $pdo->query("SELECT name FROM subagents ORDER BY name ASC")->fetchAll();
+?>
 
 <div class="kanban-wrapper">
 
     <!-- Page Header -->
     <div class="kanban-header">
         <h1>Orchestrator</h1>
+        <!-- Project Filter Dropdown - Centered -->
+        <div class="project-filter">
+            <label for="projectFilter" class="filter-label">Filter by Project:</label>
+            <select id="projectFilter" class="filter-select">
+                <option value="all">All Projects</option>
+                <?php foreach ($projects as $p): ?>
+                <option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <button class="btn btn-primary" id="newTaskBtn">+ New Task</button>
     </div>
 
@@ -19,6 +35,16 @@
                 <span class="col-count" id="count-backlog">0</span>
             </div>
             <div class="kanban-cards" id="col-backlog"></div>
+        </div>
+
+        <!-- On Deck -->
+        <div class="kanban-col" data-status="on_deck">
+            <div class="kanban-col-header">
+                <span class="col-dot" style="background:var(--pending)"></span>
+                <span class="col-label">On Deck</span>
+                <span class="col-count" id="count-on_deck">0</span>
+            </div>
+            <div class="kanban-cards" id="col-on_deck"></div>
         </div>
 
         <!-- In Progress -->
@@ -74,6 +100,14 @@
             <button class="modal-close" id="taskDetailClose" aria-label="Close">&#10005;</button>
         </div>
         <div class="modal-body task-detail-body">
+            <!-- Project -->
+            <div class="task-detail-section">
+                <label class="task-detail-label" for="taskDetailProject">Project</label>
+                <select id="taskDetailProject" class="form-control">
+                    <option value="">— No Project —</option>
+                </select>
+            </div>
+
             <div id="taskDetailDesc" class="task-detail-desc"></div>
 
             <!-- Comment history log -->
@@ -82,6 +116,19 @@
                 <div id="commentLog" class="comment-log">
                     <div class="comment-log-empty">No comments yet.</div>
                 </div>
+            </div>
+
+            <!-- Status change dropdown -->
+            <div class="task-detail-section">
+                <label class="task-detail-label" for="taskStatusChange">Change Status</label>
+                <select id="taskStatusChange" class="form-control">
+                    <option value="backlog">Backlog</option>
+                    <option value="on_deck">On Deck</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="review">Ready for Review</option>
+                    <option value="done">Done</option>
+                </select>
             </div>
 
             <!-- New comment input -->
@@ -107,6 +154,12 @@
         <div class="modal-body">
             <form id="newTaskForm">
                 <div class="form-group">
+                    <label for="taskProject">Project</label>
+                    <select id="taskProject" class="form-control">
+                        <option value="">— No Project —</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="taskTitle">Title <span style="color:var(--danger)">*</span></label>
                     <input type="text" id="taskTitle" class="form-control" placeholder="What needs to be done?" required>
                 </div>
@@ -116,16 +169,28 @@
                 </div>
                 <div class="form-group">
                     <label for="taskAssignee">Assignee</label>
-                    <input type="text" id="taskAssignee" class="form-control" placeholder="e.g. Cody, Dev, Henry">
+                    <select id="taskAssignee" class="form-control">
+                        <option value="Me" selected>Me</option>
+                        <?php foreach ($agents as $a): ?>
+                        <option value="<?= htmlspecialchars($a['name']) ?>"><?= htmlspecialchars($a['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="taskStatus">Status</label>
                     <select id="taskStatus" class="form-control">
                         <option value="backlog">Backlog</option>
+                        <option value="on_deck">On Deck</option>
                         <option value="in_progress">In Progress</option>
                         <option value="blocked">Blocked</option>
                         <option value="review">Ready for Review</option>
                         <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskPredecessor">Predecessor Task</label>
+                    <select id="taskPredecessor" class="form-control">
+                        <option value="">— None —</option>
                     </select>
                 </div>
                 <div class="form-actions">

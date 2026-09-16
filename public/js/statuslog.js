@@ -24,7 +24,30 @@ function formatDate(iso) {
     }).format(d);
 }
 
-/* ---- Lightweight Markdown renderer ---- */
+/* ---- Render report content ---- */
+
+function renderReportContent(content) {
+    if (!content) return '';
+
+    // Full HTML document — extract <body> content, strip embedded <style> blocks
+    if (content.trim().match(/^<!DOCTYPE/i) || content.trim().match(/^<html/i)) {
+        const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        let inner = bodyMatch ? bodyMatch[1].trim() : content;
+        // Remove any <style>…</style> blocks injected by the report generator
+        inner = inner.replace(/<style[\s\S]*?<\/style>/gi, '');
+        return inner;
+    }
+
+    // Partial HTML snippet (starts with a tag) — strip style blocks and render
+    if (content.trim().startsWith('<')) {
+        return content.replace(/<style[\s\S]*?<\/style>/gi, '');
+    }
+
+    // Plain markdown fallback for old reports
+    return renderMarkdown(content);
+}
+
+/* ---- Lightweight Markdown renderer (fallback) ---- */
 
 function renderMarkdown(raw) {
     if (!raw) return '';
@@ -114,7 +137,7 @@ function openModal(report) {
         : '';
     modalMeta.innerHTML = agentHtml + `<span>${escHtml(formatDate(report.created_at))}</span>`;
 
-    const rendered = renderMarkdown(report.body || '');
+    const rendered = renderReportContent(report.content || report.body || '');
     modalBody.innerHTML = `<div class="report-body-content">${rendered}</div>`;
     modalBody.scrollTop = 0;
 

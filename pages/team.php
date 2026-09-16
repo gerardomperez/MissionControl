@@ -17,6 +17,25 @@
         </div>
     </div>
 
+    <!-- Model Tier Legend -->
+    <div class="model-tier-legend">
+        <div class="legend-title">AI Model Tiers</div>
+        <div class="legend-items">
+            <div class="legend-item">
+                <span class="legend-badge tier-1">T1</span>
+                <span class="legend-text"><strong>Opus 4.6</strong> — High-stakes (Legal, Strategy)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge tier-2">T2</span>
+                <span class="legend-text"><strong>Sonnet 4.6</strong> — Workhorse (80% of tasks)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge tier-3">T3</span>
+                <span class="legend-text"><strong>Haiku 4.5</strong> — Efficient (Structured tasks)</span>
+            </div>
+        </div>
+    </div>
+
     <div class="team-content">
 
         <!-- Henry — featured row -->

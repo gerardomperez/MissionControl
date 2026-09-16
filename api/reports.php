@@ -47,18 +47,18 @@ try {
                 echo json_encode(['error' => 'title is required']);
                 exit;
             }
-            if (!isset($data['body'])) {
+            if (!isset($data['body']) && !isset($data['content'])) {
                 http_response_code(400);
-                echo json_encode(['error' => 'body is required']);
+                echo json_encode(['error' => 'body or content is required']);
                 exit;
             }
             $stmt = $pdo->prepare(
-                "INSERT INTO status_reports (title, body, source_agent)
-                 VALUES (:title, :body, :source_agent)"
+                "INSERT INTO status_reports (title, content, source_agent)
+                 VALUES (:title, :content, :source_agent)"
             );
             $stmt->execute([
                 ':title'        => $data['title'],
-                ':body'         => $data['body'],
+                ':content'      => $data['content'] ?? $data['body'],
                 ':source_agent' => $data['source_agent'] ?? '',
             ]);
             $id  = $pdo->lastInsertId();

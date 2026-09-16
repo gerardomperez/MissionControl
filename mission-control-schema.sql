@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     title           TEXT    NOT NULL,
     description     TEXT    DEFAULT '',
     status          TEXT    NOT NULL DEFAULT 'backlog'
-                        CHECK (status IN ('backlog','in_progress','blocked','review','done')),
+                        CHECK (status IN ('backlog','on_deck','in_progress','blocked','review','done')),
     assignee        TEXT    DEFAULT '',
     created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
     status_changed_at TEXT  NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),

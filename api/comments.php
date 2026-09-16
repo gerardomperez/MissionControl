@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/db.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -52,6 +52,18 @@ try {
             $row = $pdo->query("SELECT * FROM task_comments WHERE id = $id")->fetch();
             http_response_code(201);
             echo json_encode($row);
+            break;
+
+        case 'DELETE':
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['id'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'id is required']);
+                exit;
+            }
+            $id = (int) $data['id'];
+            $pdo->prepare('DELETE FROM task_comments WHERE id = :id')->execute([':id' => $id]);
+            echo json_encode(['deleted' => $id]);
             break;
 
         default:
