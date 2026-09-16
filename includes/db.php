@@ -4,7 +4,7 @@ function getDB(): PDO {
     if ($pdo === null) {
         // Use the main henry.db database (single source of truth, see
         // Henry/claude-code-db-consolidation-prompt.md)
-        $dbPath = __DIR__ . '/../../Henry/henry.db';
+        $dbPath = __DIR__ . '/../../henry.db';
         
         // Check if we can write to the directory (needed for WAL mode)
         $dbDir = dirname($dbPath);

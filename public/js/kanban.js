@@ -26,13 +26,15 @@ let currentProjectFilter = 'all';
 
 function formatTimestamp(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
+    const utcIso = (iso.includes('T') || iso.endsWith('Z')) ? iso : iso.replace(' ', 'T') + 'Z';
+    const d = new Date(utcIso);
     if (isNaN(d)) return '';
     return new Intl.DateTimeFormat('en-US', {
         month: 'short',
         day:   'numeric',
         hour:  'numeric',
         minute: '2-digit',
+        timeZone: 'America/New_York',
         hour12: true,
     }).format(d);
 }
@@ -401,11 +403,13 @@ let detailTask    = null;
 
 function formatCommentTime(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
+    const utcIso = (iso.includes('T') || iso.endsWith('Z')) ? iso : iso.replace(' ', 'T') + 'Z';
+    const d = new Date(utcIso);
     if (isNaN(d)) return iso;
     return new Intl.DateTimeFormat('en-US', {
         month: 'short', day: 'numeric',
         hour: 'numeric', minute: '2-digit', hour12: true,
+        timeZone: 'America/New_York',
     }).format(d);
 }
 

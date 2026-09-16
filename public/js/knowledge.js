@@ -553,17 +553,19 @@
     // Utility: Format date
     function formatDate(dateStr) {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const utcStr = (dateStr.includes('T') || dateStr.endsWith('Z')) ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+        const date = new Date(utcStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
     }
 
     // Utility: Format date and time
     function formatDateTime(dateStr) {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
+        const utcStr = (dateStr.includes('T') || dateStr.endsWith('Z')) ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+        const date = new Date(utcStr);
         return date.toLocaleString('en-US', { 
             month: 'short', day: 'numeric', year: 'numeric',
-            hour: 'numeric', minute: '2-digit'
+            hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York'
         });
     }
 
